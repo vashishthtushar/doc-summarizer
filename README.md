@@ -234,6 +234,50 @@ The application includes robust error handling:
 - User authentication and history
 - Local model support for offline use
 
+## Deployment
+
+The application can be deployed to various hosting platforms. Here are instructions for popular free hosting services:
+
+### Option 1: Render (Recommended - Free Tier)
+
+1. **Create a Render account** at [render.com](https://render.com)
+2. **Create a new Web Service**:
+   - Connect your GitHub repository
+   - Select the repository: `vashishthtushar/doc-summarizer`
+3. **Configure the service**:
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python app.py`
+   - **Environment Variables**: Add your `HF_API_KEY` in the Environment tab
+4. **Deploy**: Click "Create Web Service"
+5. Your app will be live at: `https://your-app-name.onrender.com`
+
+### Option 2: Railway
+
+1. **Create a Railway account** at [railway.app](https://railway.app)
+2. **New Project** → **Deploy from GitHub repo**
+3. **Add Environment Variable**: `HF_API_KEY` with your API key
+4. **Deploy**: Railway will automatically detect Python and deploy
+5. Your app will be live at: `https://your-app-name.up.railway.app`
+
+### Option 3: Fly.io
+
+1. **Install Fly CLI**: `curl -L https://fly.io/install.sh | sh`
+2. **Login**: `fly auth login`
+3. **Initialize**: `fly launch` (in your project directory)
+4. **Set secrets**: `fly secrets set HF_API_KEY=your_key_here`
+5. **Deploy**: `fly deploy`
+
+### Important Notes for Deployment
+
+- Make sure to set the `HF_API_KEY` environment variable in your hosting platform
+- The app uses `PORT` environment variable for production (automatically set by most hosting services)
+- Free tiers may have cold start delays (first request takes longer)
+- Some free tiers have usage limits - check your hosting provider's terms
+
+### Update Deployment Link
+
+After deploying, update the "Live Demo" link at the top of this README with your actual deployment URL.
+
 ## License
 
 This project is for educational purposes.
