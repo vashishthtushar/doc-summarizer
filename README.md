@@ -2,6 +2,12 @@
 
 A web application for summarizing text documents using AI-powered natural language processing. This project uses Hugging Face's BART Large CNN model to generate concise summaries from text input or uploaded documents.
 
+## 🚀 Live Demo
+
+**🔗 Live Application**: [https://doc-summarizer-la21.onrender.com/](https://doc-summarizer-la21.onrender.com/)
+
+**📦 Repository**: [https://github.com/vashishthtushar/doc-summarizer](https://github.com/vashishthtushar/doc-summarizer)
+
 ## Features
 
 - **Multiple Summary Styles**: Choose from brief, detailed, or bullet-point summaries
