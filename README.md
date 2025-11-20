@@ -134,15 +134,75 @@ You can customize the application by modifying environment variables in `.env`:
 - `HF_MAX_RETRIES`: Maximum retry attempts for API calls (default: 3)
 - `HF_TEMPERATURE`: Model temperature for generation (default: 0.1)
 
+## Approach and Design Decisions
+
+### Architecture Overview
+
+The application follows a clean separation of concerns with a modular design:
+
+1. **Flask Backend (`app.py`)**: Handles HTTP requests, file uploads, and serves the web interface
+2. **Summarization Engine (`summarizer.py`)**: Contains the core logic for text processing and API interactions
+3. **Frontend (`templates/index.html`)**: Simple, responsive web interface built with vanilla JavaScript
+
+### Key Design Decisions
+
+**1. API-Based Approach**
+- Chose Hugging Face Inference API over local model deployment for:
+  - Faster development and setup
+  - No need for GPU resources
+  - Free tier availability for educational use
+  - Easy model switching without code changes
+
+**2. BART Large CNN Model Selection**
+- Selected `facebook/bart-large-cnn` specifically because:
+  - Trained for summarization tasks (not general language generation)
+  - Optimized for CNN/DailyMail datasets (news-style summarization)
+  - Produces abstractive summaries (not just extractive)
+  - Good balance between quality and response time
+
+**3. Text Chunking Strategy**
+- Implemented paragraph-aware chunking to:
+  - Handle documents larger than model context limits
+  - Preserve semantic coherence by keeping paragraphs together
+  - Split only when absolutely necessary
+  - Combine chunk summaries for long documents
+
+**4. Style-Based Summarization**
+- Three distinct styles with different parameters:
+  - **Brief**: Short max_length (50) for concise summaries
+  - **Detailed**: Longer max_length (120) for comprehensive coverage
+  - **Bullets**: Medium length (80) with prompt engineering for list format
+
+**5. Error Handling and Resilience**
+- Multiple layers of error handling:
+  - API failures fall back to mock summaries (demo functionality)
+  - Retry logic with exponential backoff for transient errors
+  - Input validation at multiple levels
+  - Graceful degradation when services are unavailable
+
+**6. Security Considerations**
+- Environment variables for sensitive data (API keys)
+- Input sanitization for file uploads
+- Secure filename handling with Werkzeug
+- File type and size restrictions
+
+**7. Code Organization**
+- Separation of concerns: routing logic separate from summarization logic
+- Configurable parameters via environment variables
+- Reusable `Summarizer` class that can be imported independently
+- Clear function naming and documentation
+
 ## How It Works
 
 1. **Text Processing**: The application receives text input either from direct input or file upload
-2. **Chunking**: Long texts are split into manageable chunks for processing
+2. **Chunking**: Long texts are split into manageable chunks using paragraph-aware splitting
 3. **API Call**: Each chunk is sent to Hugging Face's BART Large CNN model via their inference API
-4. **Summary Generation**: The model generates a summary based on the selected style
-5. **Response**: The summary is returned and displayed to the user
+4. **Summary Generation**: The model generates a summary based on the selected style and parameters
+5. **Echo Detection**: Output is checked to ensure it's not just echoing the input
+6. **Chunk Combination**: If multiple chunks exist, summaries are synthesized into a final coherent summary
+7. **Response**: The summary is returned and displayed to the user
 
-The BART Large CNN model is specifically trained for summarization tasks and produces high-quality, coherent summaries.
+The BART Large CNN model is specifically trained for summarization tasks and produces high-quality, coherent summaries through abstractive summarization techniques.
 
 ## Error Handling
 

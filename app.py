@@ -83,7 +83,12 @@ def index():
 def api_health():
     """
     Health check endpoint to verify API connectivity and summarizer availability
-    Returns JSON with status information
+    
+    Returns:
+        JSON response with:
+        - summarizer_imported: bool - Whether summarizer module loaded successfully
+        - hf_router_ok: bool - Whether Hugging Face API is reachable
+        - note: str - Status message with details
     """
     imported = SUMMARIZER_AVAILABLE
     hf_ok = False
@@ -114,8 +119,22 @@ def api_health():
 def api_summarize():
     """
     Main summarization endpoint
-    Accepts text input or file upload (.txt or .md files)
-    Returns JSON response with generated summary
+    
+    Accepts:
+        - text (form-data): Direct text input to summarize
+        - file (form-data): File upload (.txt or .md format)
+        - style (form-data): Summary style - 'brief', 'detailed', or 'bullets' (default: 'brief')
+    
+    Returns:
+        JSON response with:
+        - summary: str - Generated summary text
+        - note: str (optional) - Warning if mock summary was used
+        - error: str (optional) - Error message if validation failed
+    
+    Status Codes:
+        - 200: Success (may include note if fallback used)
+        - 400: Bad request (missing input or validation error)
+        - 500: Server error (file processing failed)
     """
     style = request.form.get("style", "brief")
     text_input = (request.form.get("text") or "").strip()

@@ -39,7 +39,23 @@ class SummarizationError(Exception):
 
 
 class Summarizer:
+    """
+    Main summarization class that handles text summarization using Hugging Face API.
+    
+    Supports multiple summary styles: brief, detailed, and bullets.
+    Handles long documents through chunking and synthesis.
+    """
+    
     def __init__(self, model_id: str = None):
+        """
+        Initialize the Summarizer instance.
+        
+        Args:
+            model_id: Optional model ID to override default. Defaults to HF_MODEL from environment.
+        
+        Raises:
+            SummarizationError: If HF_API_KEY is not found in environment variables
+        """
         self.model_id = model_id or HF_MODEL
         if not HF_API_KEY:
             raise SummarizationError("HF_API_KEY missing in .env")
@@ -253,6 +269,19 @@ class Summarizer:
 
     # Main summarization method with echo detection and retry logic
     def summarize(self, text: str, style: str = "brief") -> str:
+        """
+        Generate a summary of the input text.
+        
+        Args:
+            text: Input text to summarize
+            style: Summary style - 'brief', 'detailed', or 'bullets' (default: 'brief')
+        
+        Returns:
+            str: Generated summary text
+        
+        Raises:
+            SummarizationError: If input is empty or API calls fail after retries
+        """
         if not text or not text.strip():
             raise SummarizationError("Empty input.")
 
