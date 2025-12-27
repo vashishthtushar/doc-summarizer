@@ -149,22 +149,26 @@ class Summarizer:
         if is_bart:
             # BART uses max_length and min_length
             if style == "brief":
-                max_length = 50
-                min_length = 10
-            elif style == "detailed":
                 max_length = 120
-                min_length = 20
+                min_length = 50
+            elif style == "detailed":
+                max_length = 420
+                min_length = 180
             elif style == "bullets":
-                max_length = 80
-                min_length = 15
+                max_length = 220
+                min_length = 120
             else:
-                max_length = 60
-                min_length = 10
+                max_length = 200
+                min_length = 80
+
             
             params = {
                 "max_length": max_length,
                 "min_length": min_length,
-                "temperature": TEMPERATURE
+                "num_beams": 4,
+                "length_penalty": 2.0 if style == "brief" else 1.0,
+                "do_sample": False,
+                "early_stopping": True
             }
         else:
             # Other models use max_new_tokens
@@ -267,6 +271,32 @@ class Summarizer:
             return True
         return False
 
+        # Convert a normal summary into bullet points (for non-instruction models like BART)
+    def _to_bullets(self, summary: str) -> str:
+        if not summary:
+            return ""
+
+        # Normalize text
+        text = summary.replace("\n", " ").strip()
+
+        # Split into sentences
+        sentences = [
+            s.strip()
+            for s in text.split(". ")
+            if len(s.strip()) > 20
+        ]
+
+        # Limit bullet count
+        sentences = sentences[:8]
+        return "\n".join(f"- {s.rstrip('.')}" for s in sentences)
+
+        # Format bullets
+        # bullets = [f"- {s.rstrip('.')}" for s in sentences]
+
+        # return "\n".join(bullets)
+    
+
+
     # Main summarization method with echo detection and retry logic
     def summarize(self, text: str, style: str = "brief") -> str:
         """
@@ -299,12 +329,19 @@ class Summarizer:
             if self._looks_like_echo(ch, out):
                 logger.info("Detected possible echo; retrying with adjusted parameters for chunk %d", i+1)
                 
+                # if is_bart:
+                #     # For BART: try with shorter max_length to force more concise summary
+                #     params2 = params.copy()
+                #     if "max_length" in params2:
+                #         params2["max_length"] = min(params2["max_length"], 40)
+                #     out2 = self._call_hf(prompt, params2)  # Keep prompt same (just text)
                 if is_bart:
-                    # For BART: try with shorter max_length to force more concise summary
+                    # For BART, retry only with stronger length constraint
                     params2 = params.copy()
-                    if "max_length" in params2:
-                        params2["max_length"] = min(params2["max_length"], 40)
-                    out2 = self._call_hf(prompt, params2)  # Keep prompt same (just text)
+                    params2["length_penalty"] = 2.5
+                    params2["min_length"] = max(30, params["min_length"] // 2)
+                    out2 = self._call_hf(prompt, params2)
+
                 else:
                     # For instruction-tuned models: add stronger instructions
                     stronger_instr = (
@@ -326,18 +363,55 @@ class Summarizer:
             partials.append(out)
 
         # if only one chunk, return it cleaned
+        # if len(partials) == 1:
+        #     return partials[0].strip()
         if len(partials) == 1:
-            return partials[0].strip()
+            result = partials[0].strip()
+            if style == "bullets" and "bart" in self.model_id.lower():
+                return self._to_bullets(result)
+            return result
+
+
+        # # synthesize partials
+        # synth_prompt = (
+        #     "Combine the following partial summaries into a single coherent summary. Remove duplicates and be concise.\n\n"
+        # )
+        # for idx, p in enumerate(partials):
+        #     synth_prompt += f"--- PART {idx+1} ---\n{p}\n\n"
+        # params = {"max_new_tokens": 220, "temperature": TEMPERATURE}
+        # final = self._call_hf(synth_prompt, params).strip()
+        # if self._looks_like_echo(text, final):
+        #     # fallback: join partials
+        #     return "\n".join(partials)
+        # return final
 
         # synthesize partials
+        is_bart = "bart" in self.model_id.lower()
+        
+        if is_bart:
+            # For BART: re-summarize the partial summaries (NO instruction prompt)
+            merged_text = "\n\n".join(partials)
+            prompt, params = self._prompt_and_params(merged_text, style)
+            final = self._call_hf(prompt, params).strip()
+        
+            if style == "bullets":
+                return self._to_bullets(final)
+        
+            return final
+        
+        # ---- existing instruction-based synthesis (UNCHANGED) ----
         synth_prompt = (
-            "Combine the following partial summaries into a single coherent summary. Remove duplicates and be concise.\n\n"
+            "Combine the following partial summaries into a single coherent summary. "
+            "Remove duplicates and be concise.\n\n"
         )
         for idx, p in enumerate(partials):
             synth_prompt += f"--- PART {idx+1} ---\n{p}\n\n"
+        
         params = {"max_new_tokens": 220, "temperature": TEMPERATURE}
         final = self._call_hf(synth_prompt, params).strip()
+        
         if self._looks_like_echo(text, final):
-            # fallback: join partials
             return "\n".join(partials)
+        
         return final
+
