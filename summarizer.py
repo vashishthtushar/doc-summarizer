@@ -181,7 +181,7 @@ class Summarizer:
         model = self.model_id
 
         urls = [
-            f"https://api-inference.huggingface.co/models/{model}",
+            f"https://router.huggingface.co/hf-inference/models/{model}",
             # f"https://api-inference.huggingface.co/models/{model}"
         ]
 
